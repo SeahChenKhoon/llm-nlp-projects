@@ -20,25 +20,20 @@ def _load_env_variables():
     load_dotenv()  # Load environment variables from .env file
 
     return {
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "faiss_index_name": os.getenv("faiss_index_name", "faiss_index"),
-        "document_store_name": os.getenv("document_store_name", "documents/"),
+        "openai_api_key": os.getenv("openai_api_key"),
+        "faiss_index_name": os.getenv("faiss_index_name"),
+        "document_store_name": os.getenv("document_store_name"),
         "file_type": os.getenv("file_type", "pdf"),
-        "chunk_size": int(os.getenv("chunk_size", 500)),  # Convert to integer
-        "chunk_overlap": int(os.getenv("chunk_overlap", 100))  # Convert to integer
+        "chunk_size": int(os.getenv("chunk_size", 500)), 
+        "chunk_overlap": int(os.getenv("chunk_overlap", 100)),
+        "model_name": os.getenv("model_name"),
+        "temperature": os.getenv("temperature"),
+        "question_store_name": os.getenv("question_store_name"),
     }
 
-def load_openai_api_key(openai_api_key):
-    openai.api_key = openai_api_key  # Retrieve API key
 
-    if openai.api_key:
-        print("API Key loaded successfully!")
-    else:
-        print("Failed to load API Key. Check your .env file.")
-    return openai
-
-def load_all_pdfs_from_folder(folder_path: str):
-    all_documents = []
+def load_pdfs(folder_path: str):
+    documents = []
 
     for filename in os.listdir(folder_path):
         if filename.endswith(".pdf"):
@@ -46,35 +41,30 @@ def load_all_pdfs_from_folder(folder_path: str):
             try:
                 loader = PyPDFLoader(filepath)
                 documents = loader.load()
-                all_documents.extend(documents)
+                documents.extend(documents)
                 print(f"Loaded {len(documents)} pages from {filename}")
             except Exception as e:
                 print(f"Failed to load {filename}: {e}")
 
-    return all_documents
+    return documents
 
 def process_documents(openai_api_key, document_store_name, chunk_size, chunk_overlap, faiss_index_name):
-    all_documents = load_all_pdfs_from_folder(document_store_name)
+    documents = load_pdfs(document_store_name)
 
     # Split documents into smaller chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, 
                                                    chunk_overlap=chunk_overlap)
-    docs = text_splitter.split_documents(all_documents)
+    docs = text_splitter.split_documents(documents)
     
     # Convert text chunks into embeddings and store them in FAISS
     embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
     vectorstore = FAISS.from_documents(docs, embeddings)
-
-    # Save the FAISS index for later use
     vectorstore.save_local(faiss_index_name)
-    print(f"FAISS index saved as '{faiss_index_name}'.")
-    
-    # Create a retriever
-    retriever = vectorstore.as_retriever()
-    retriever =[]
-    return retriever
 
-def run_rag_pipeline(absolute_path, retriever, model_name="gpt-4", temperature=0):
+    print(f"FAISS index saved as '{faiss_index_name}'.")
+    return vectorstore.as_retriever()
+
+def run_rag_pipeline(absolute_path, retriever, model_name, temperature):
     # Initialize OpenAI LLM
     llm = ChatOpenAI(model_name=model_name, temperature=temperature)
 
@@ -131,12 +121,15 @@ def run_rag_pipeline(absolute_path, retriever, model_name="gpt-4", temperature=0
 def main():
     print("Loading environment variables...")
     env_vars = _load_env_variables()
-    retriever = process_documents(openai_api_key=env_vars["OPENAI_API_KEY"],
+    retriever = process_documents(openai_api_key=env_vars["openai_api_key"],
                                   document_store_name=env_vars["document_store_name"], 
                                   chunk_size=env_vars["chunk_size"], 
                                   chunk_overlap=env_vars["chunk_overlap"], 
                                   faiss_index_name=env_vars["faiss_index_name"])
-    # results = run_rag_pipeline("./questions/Questions.csv", retriever)
+    results = run_rag_pipeline(absolute_path=env_vars["question_store_name"], 
+                               retriever=retriever,
+                               model_name=env_vars["model_name"],
+                               temperature=env_vars["temperature"])
 
 if __name__ == "__main__":
     main()

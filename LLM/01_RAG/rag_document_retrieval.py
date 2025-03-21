@@ -1,35 +1,22 @@
-# Document Loading & Splitting
-from langchain_community.document_loaders import DirectoryLoader
+# Standard library
+import os
+
+# Third-party packages
+import pandas as pd
+import openai
+from dotenv import load_dotenv
+from rouge_score import rouge_scorer
+
+# LangChain core
+from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# import warnings
-# warnings.simplefilter("ignore", UserWarning)
-
-# Embedding & Vector Storage
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS 
-
-# Environment Variables & API Setup
-from dotenv import load_dotenv
-import openai
-import os
-from langchain_openai import ChatOpenAI
-# from langchain_community.chat_models import ChatOpenAI
-import pandas as pd
-
-# Retrieval-Based QA Pipeline
-from langchain.chains import RetrievalQA
-# from langchain_community.chat_models import ChatOpenAI
-
-# ROUGE Scoring for Evaluation
-from rouge_score import rouge_scorer
-from langchain_community.document_loaders import PyPDFLoader
+# LangChain integrations
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
+from langchain_community.vectorstores import FAISS
 
 def _load_env_variables():
-    """
-    Loads and retrieves environment variables from the .env file.
-    Returns them as a dictionary.
-    """
     load_dotenv()  # Load environment variables from .env file
 
     return {
@@ -60,22 +47,22 @@ def load_all_pdfs_from_folder(folder_path: str):
                 loader = PyPDFLoader(filepath)
                 documents = loader.load()
                 all_documents.extend(documents)
-                print(f"✅ Loaded {len(documents)} pages from {filename}")
+                print(f"Loaded {len(documents)} pages from {filename}")
             except Exception as e:
-                print(f"❌ Failed to load {filename}: {e}")
+                print(f"Failed to load {filename}: {e}")
 
     return all_documents
 
-def process_documents(document_store_name, file_type, chunk_size, chunk_overlap, faiss_index_name):
+def process_documents(openai_api_key, document_store_name, chunk_size, chunk_overlap, faiss_index_name):
     all_documents = load_all_pdfs_from_folder(document_store_name)
 
     # Split documents into smaller chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, 
                                                    chunk_overlap=chunk_overlap)
-    
     docs = text_splitter.split_documents(all_documents)
+    
     # Convert text chunks into embeddings and store them in FAISS
-    embeddings = OpenAIEmbeddings()
+    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
     vectorstore = FAISS.from_documents(docs, embeddings)
 
     # Save the FAISS index for later use
@@ -84,8 +71,7 @@ def process_documents(document_store_name, file_type, chunk_size, chunk_overlap,
     
     # Create a retriever
     retriever = vectorstore.as_retriever()
-
-    print("Hello World End!")
+    retriever =[]
     return retriever
 
 def run_rag_pipeline(absolute_path, retriever, model_name="gpt-4", temperature=0):
@@ -145,16 +131,12 @@ def run_rag_pipeline(absolute_path, retriever, model_name="gpt-4", temperature=0
 def main():
     print("Loading environment variables...")
     env_vars = _load_env_variables()
-    openai = load_openai_api_key(env_vars["OPENAI_API_KEY"])
-    retriever = process_documents(document_store_name=env_vars["document_store_name"], 
-                                  file_type=env_vars["file_type"], 
+    retriever = process_documents(openai_api_key=env_vars["OPENAI_API_KEY"],
+                                  document_store_name=env_vars["document_store_name"], 
                                   chunk_size=env_vars["chunk_size"], 
                                   chunk_overlap=env_vars["chunk_overlap"], 
                                   faiss_index_name=env_vars["faiss_index_name"])
-    results = run_rag_pipeline("./questions/Questions.csv", retriever)
-
-    # del vectorstore
-    # print("Document retrieval pipeline completed.")
+    # results = run_rag_pipeline("./questions/Questions.csv", retriever)
 
 if __name__ == "__main__":
     main()

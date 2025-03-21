@@ -1,6 +1,7 @@
 # Standard library
 import os
 from typing import Dict, Any, List
+import logging
 
 # Third-party packages
 import pandas as pd
@@ -18,6 +19,17 @@ from langchain.vectorstores.base import VectorStoreRetriever
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_community.vectorstores import FAISS
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("langchain").setLevel(logging.INFO)
 
 def _load_env_variables() -> Dict[str, Any]:
     """
@@ -69,9 +81,9 @@ def load_pdfs(folder_path: str) -> List[Document]:
                 loader = PyPDFLoader(filepath)
                 documents = loader.load()
                 documents.extend(documents)
-                print(f"Loaded {len(documents)} pages from {filename}")
+                logger.info(f"Loaded {len(documents)} pages from {filename}")
             except Exception as e:
-                print(f"Failed to load {filename}: {e}")
+                logger.error(f"Failed to load {filename}: {e}")
 
     return documents
 
@@ -94,7 +106,7 @@ def process_documents(
     vectorstore = FAISS.from_documents(docs, embeddings)
     vectorstore.save_local(faiss_index_name)
 
-    print(f"FAISS index saved as '{faiss_index_name}'.")
+    logger.info(f"FAISS index saved as '{faiss_index_name}'.")
     return vectorstore.as_retriever()
 
 def run_rag_pipeline(
@@ -150,14 +162,14 @@ def run_rag_pipeline(
         rouge_scores = scorer.score(human_answer, response["result"])
 
         # Print results
-        print(f"Question {question_no + 1}: {question}")
-        print(f"Human Answer: {human_answer}")
-        print(f"Response: {response['result']}\n")
-        print(f"ROUGE-1: {rouge_scores['rouge1'].fmeasure:.4f}")
-        print(f"ROUGE-2: {rouge_scores['rouge2'].fmeasure:.4f}")
-        print(f"ROUGE-L: {rouge_scores['rougeL'].fmeasure:.4f}")
-        print("\n------------------------------------------------")
-
+        logger.info("\n------------------------------------------------")
+        logger.info(f"Question {question_no + 1}: {question}")
+        logger.info(f"Human Answer: {human_answer}")
+        logger.info(f"Response: {response['result']}\n")
+        logger.info(f"ROUGE-1: {rouge_scores['rouge1'].fmeasure:.4f}")
+        logger.info(f"ROUGE-2: {rouge_scores['rouge2'].fmeasure:.4f}")
+        logger.info(f"ROUGE-L: {rouge_scores['rougeL'].fmeasure:.4f}")
+        
         # Store results as a dictionary
         results.append({
             "question": question,
@@ -171,7 +183,7 @@ def run_rag_pipeline(
     return results
 
 def main():
-    print("Loading environment variables...")
+    logger.info("Loading environment variables...")
     env_vars = _load_env_variables()
     retriever = process_documents(openai_api_key=env_vars["openai_api_key"],
                                   document_store_name=env_vars["document_store_name"], 

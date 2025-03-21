@@ -1,5 +1,6 @@
 # Standard library
 import os
+from typing import Dict, Any, List
 
 # Third-party packages
 import pandas as pd
@@ -9,14 +10,31 @@ from rouge_score import rouge_scorer
 
 # LangChain core
 from langchain.chains import RetrievalQA
+from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores.base import VectorStoreRetriever
 
 # LangChain integrations
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_community.vectorstores import FAISS
 
-def _load_env_variables():
+def _load_env_variables() -> Dict[str, Any]:
+    """
+    Load environment variables from a `.env` file and return them as a dictionary.
+
+    Returns:
+        Dict[str, Any]: A dictionary containing configuration values including:
+            - openai_api_key (str | None): API key for OpenAI.
+            - faiss_index_name (str | None): Name of the FAISS index.
+            - document_store_name (str | None): Name of the document store.
+            - file_type (str): File type to load, default is "pdf".
+            - chunk_size (int): Number of characters in each document chunk.
+            - chunk_overlap (int): Number of overlapping characters between chunks.
+            - model_name (str | None): Name of the OpenAI model to use.
+            - temperature (str | None): Temperature setting for model response variability.
+            - question_store_name (str | None): Name of the question store.
+    """
     load_dotenv()  # Load environment variables from .env file
 
     return {
@@ -32,7 +50,16 @@ def _load_env_variables():
     }
 
 
-def load_pdfs(folder_path: str):
+def load_pdfs(folder_path: str) -> List[Document]:
+    """
+    Load all PDF files from the given folder and return a list of Document objects.
+
+    Args:
+        folder_path (str): The path to the folder containing PDF files.
+
+    Returns:
+        List[Document]: A list of parsed documents from all PDF files.
+    """    
     documents = []
 
     for filename in os.listdir(folder_path):
@@ -48,7 +75,13 @@ def load_pdfs(folder_path: str):
 
     return documents
 
-def process_documents(openai_api_key, document_store_name, chunk_size, chunk_overlap, faiss_index_name):
+def process_documents(    
+    openai_api_key: str,
+    document_store_name: str,
+    chunk_size: int,
+    chunk_overlap: int,
+    faiss_index_name: str
+) -> VectorStoreRetriever:
     documents = load_pdfs(document_store_name)
 
     # Split documents into smaller chunks
@@ -64,7 +97,26 @@ def process_documents(openai_api_key, document_store_name, chunk_size, chunk_ove
     print(f"FAISS index saved as '{faiss_index_name}'.")
     return vectorstore.as_retriever()
 
-def run_rag_pipeline(absolute_path, retriever, model_name, temperature):
+def run_rag_pipeline(
+    absolute_path: str,
+    retriever: VectorStoreRetriever,
+    model_name: str,
+    temperature: float)-> List[Dict[str, Any]]:
+    """
+    Run a Retrieval-Augmented Generation (RAG) pipeline on questions from a CSV file, 
+    generate LLM responses, and evaluate them using ROUGE scores.
+
+    Args:
+        absolute_path (str): Full path to the CSV file containing 'Question' and 'Answer' columns.
+        retriever (VectorStoreRetriever): Retriever for fetching relevant documents.
+        model_name (str): Name of the OpenAI model (e.g., "gpt-4", "gpt-3.5-turbo").
+        temperature (float): Sampling temperature for response variability.
+
+    Returns:
+        List[Dict[str, Any]]: A list of results, each containing the question, human answer, 
+                              generated response, and ROUGE scores.
+    """
+        
     # Initialize OpenAI LLM
     llm = ChatOpenAI(model_name=model_name, temperature=temperature)
 
@@ -100,7 +152,7 @@ def run_rag_pipeline(absolute_path, retriever, model_name, temperature):
         # Print results
         print(f"Question {question_no + 1}: {question}")
         print(f"Human Answer: {human_answer}")
-        print(f"Response: {response}\n")
+        print(f"Response: {response['result']}\n")
         print(f"ROUGE-1: {rouge_scores['rouge1'].fmeasure:.4f}")
         print(f"ROUGE-2: {rouge_scores['rouge2'].fmeasure:.4f}")
         print(f"ROUGE-L: {rouge_scores['rougeL'].fmeasure:.4f}")
@@ -110,7 +162,7 @@ def run_rag_pipeline(absolute_path, retriever, model_name, temperature):
         results.append({
             "question": question,
             "human_answer": human_answer,
-            "response": response,
+            "response": response["result"],
             "rouge1": rouge_scores["rouge1"].fmeasure,
             "rouge2": rouge_scores["rouge2"].fmeasure,
             "rougeL": rouge_scores["rougeL"].fmeasure,

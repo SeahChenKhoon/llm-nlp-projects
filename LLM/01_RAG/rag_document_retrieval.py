@@ -179,7 +179,19 @@ def run_rag_pipeline(
             "rougeL": rouge_scores["rougeL"].fmeasure,
         })
     
-    return results
+        df = pd.DataFrame(results)
+
+    overall_rouge = {
+        "ROUGE-1": df["rouge1"].mean(),
+        "ROUGE-2": df["rouge2"].mean(),
+        "ROUGE-L": df["rougeL"].mean(),
+    }
+
+    print("\nOverall ROUGE Scores:")
+    for key, value in overall_rouge.items():
+        print(f"{key}: {value:.4f}")
+
+    return None
 
 def run_interactive_mode(
     retriever: VectorStoreRetriever,
@@ -201,11 +213,11 @@ def run_interactive_mode(
     llm = ChatOpenAI(model_name=model_name, temperature=temperature)
     qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
 
-    print("\nInteractive mode. Type your question or 'exit' to quit.")
+    logger.info("\nInteractive mode. Type your question or 'exit' to quit.")
     while True:
         question = input("\nEnter your question: ")
         if question.lower() in {"exit", "quit"}:
-            print("Exiting...")
+            logger.info("Exiting...")
             break
 
         prompt = f"""
@@ -216,7 +228,7 @@ def run_interactive_mode(
         Answer:"""
 
         response = qa_chain.invoke({"query": prompt})
-        print(f"\nResponse: {response['result']}")
+        logger.info(f"\nResponse: {response['result']}")
 
 
 def main() -> None:

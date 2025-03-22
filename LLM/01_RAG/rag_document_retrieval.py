@@ -187,7 +187,16 @@ def run_interactive_mode(
     temperature: float
 ) -> None:
     """
-    Run the RAG pipeline in interactive mode via terminal textbox-like input.
+    Launches an interactive terminal-based interface for asking questions 
+    using a Retrieval-Augmented Generation (RAG) pipeline.
+
+    Args:
+        retriever (VectorStoreRetriever): A retriever object that performs document retrieval.
+        model_name (str): The name of the OpenAI model to use (e.g., 'gpt-3.5-turbo' or 'gpt-4').
+        temperature (float): The temperature value for controlling randomness in LLM responses.
+
+    Returns:
+        None
     """
     llm = ChatOpenAI(model_name=model_name, temperature=temperature)
     qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
@@ -210,7 +219,16 @@ def run_interactive_mode(
         print(f"\nResponse: {response['result']}")
 
 
-def main():
+def main() -> None:
+    """
+    Entry point for the RAG document retrieval application.
+
+    This function:
+    - Loads environment variables
+    - Builds a retriever from the provided documents
+    - Allows the user to choose between batch mode (from CSV) or interactive mode
+    - Executes the appropriate pipeline based on user selection
+    """
     logger.info("Loading environment variables...")
     env_vars = _load_env_variables()
     retriever = process_documents(openai_api_key=env_vars["openai_api_key"],

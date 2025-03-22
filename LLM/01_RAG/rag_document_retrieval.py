@@ -79,8 +79,7 @@ def load_pdfs(folder_path: str) -> List[Document]:
             filepath = os.path.join(folder_path, filename)
             try:
                 loader = PyPDFLoader(filepath)
-                documents = loader.load()
-                documents.extend(documents)
+                documents.extend(loader.load())
                 logger.info(f"Loaded {len(documents)} pages from {filename}")
             except Exception as e:
                 logger.error(f"Failed to load {filename}: {e}")
@@ -182,6 +181,35 @@ def run_rag_pipeline(
     
     return results
 
+def run_interactive_mode(
+    retriever: VectorStoreRetriever,
+    model_name: str,
+    temperature: float
+) -> None:
+    """
+    Run the RAG pipeline in interactive mode via terminal textbox-like input.
+    """
+    llm = ChatOpenAI(model_name=model_name, temperature=temperature)
+    qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
+
+    print("\nInteractive mode. Type your question or 'exit' to quit.")
+    while True:
+        question = input("\nEnter your question: ")
+        if question.lower() in {"exit", "quit"}:
+            print("Exiting...")
+            break
+
+        prompt = f"""
+        Provide a response to the following question in no more than 20 words.
+
+        {question}
+
+        Answer:"""
+
+        response = qa_chain.invoke({"query": prompt})
+        print(f"\nResponse: {response['result']}")
+
+
 def main():
     logger.info("Loading environment variables...")
     env_vars = _load_env_variables()
@@ -190,10 +218,19 @@ def main():
                                   chunk_size=env_vars["chunk_size"], 
                                   chunk_overlap=env_vars["chunk_overlap"], 
                                   faiss_index_name=env_vars["faiss_index_name"])
-    results = run_rag_pipeline(absolute_path=env_vars["question_store_name"], 
-                               retriever=retriever,
-                               model_name=env_vars["model_name"],
-                               temperature=env_vars["temperature"])
+    mode = input("Enter 'batch' to run from CSV or 'interactive' to type questions: ").strip().lower()
+    
+    if mode == "batch":
+        results = run_rag_pipeline(absolute_path=env_vars["question_store_name"], 
+                                   retriever=retriever,
+                                   model_name=env_vars["model_name"],
+                                   temperature=float(env_vars["temperature"]))
+    elif mode == "interactive":
+        run_interactive_mode(retriever=retriever,
+                             model_name=env_vars["model_name"],
+                             temperature=float(env_vars["temperature"]))
+    else:
+        print("Invalid input. Exiting.")    
 
 if __name__ == "__main__":
     main()

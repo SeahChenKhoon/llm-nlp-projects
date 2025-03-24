@@ -1,7 +1,4 @@
-<!-- uv add langchain_community
-uv add langchain_openai
-uv add pandas
-uv add rouge_score
-uv add faiss-cpu
-uv add pypdf
-uv run rag_document_retrieval.py -->
+C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python311\\python.exe -m venv .venv
+.\\.venv\\Scripts\\activate
+pip install uv
+uv pip install -r requirements.txt

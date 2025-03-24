@@ -1,3 +1,2 @@
 .env
 faiss_index/*
-results/*

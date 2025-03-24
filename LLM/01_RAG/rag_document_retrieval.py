@@ -2,12 +2,23 @@
 import os
 from typing import Dict, Any, List
 import logging
+from ast import literal_eval
+from datetime import datetime
+from datasets import Dataset
 
 # Third-party packages
 import pandas as pd
 import openai
 from dotenv import load_dotenv
 from rouge_score import rouge_scorer
+from ragas.metrics import (
+    answer_relevancy,
+    context_precision,
+    context_recall,
+    faithfulness,
+    answer_similarity,
+)
+from ragas import evaluate
 
 # LangChain core
 from langchain.chains import RetrievalQA
@@ -59,6 +70,7 @@ def _load_env_variables() -> Dict[str, Any]:
         "model_name": os.getenv("model_name"),
         "temperature": os.getenv("temperature"),
         "question_store_name": os.getenv("question_store_name"),
+        "results_store_name": os.getenv("results_store_name")
     }
 
 
@@ -108,31 +120,32 @@ def process_documents(
     logger.info(f"FAISS index saved as '{faiss_index_name}'.")
     return vectorstore.as_retriever()
 
+# Convert context column from string to list if needed
+def parse_context(val):
+    try:
+        # If it's a stringified list (e.g., "['a', 'b']")
+        return literal_eval(val)
+    except Exception:
+        # If it's semicolon-separated
+        return val.split(";") if isinstance(val, str) else []
+
+
 def run_rag_pipeline(
     absolute_path: str,
     retriever: VectorStoreRetriever,
     model_name: str,
-    temperature: float)-> List[Dict[str, Any]]:
-    """
-    Run a Retrieval-Augmented Generation (RAG) pipeline on questions from a CSV file, 
-    generate LLM responses, and evaluate them using ROUGE scores.
-
-    Args:
-        absolute_path (str): Full path to the CSV file containing 'Question' and 'Answer' columns.
-        retriever (VectorStoreRetriever): Retriever for fetching relevant documents.
-        model_name (str): Name of the OpenAI model (e.g., "gpt-4", "gpt-3.5-turbo").
-        temperature (float): Sampling temperature for response variability.
-
-    Returns:
-        List[Dict[str, Any]]: A list of results, each containing the question, human answer, 
-                              generated response, and ROUGE scores.
-    """
+    temperature: float,
+    results_store_name:str)-> List[Dict[str, Any]]:
         
     # Initialize OpenAI LLM
     llm = ChatOpenAI(model_name=model_name, temperature=temperature)
 
     # Build the RAG pipeline
-    qa_chain = RetrievalQA.from_chain_type(llm, retriever=retriever)
+    qa_chain = RetrievalQA.from_chain_type(
+        llm, 
+        retriever=retriever,
+        return_source_documents=True
+    )
     
     # Load questions from CSV
     questions_df = pd.read_csv(absolute_path)
@@ -156,6 +169,7 @@ def run_rag_pipeline(
 
         # Generate response
         response = qa_chain.invoke({"query": prompt})
+        contexts = [doc.page_content for doc in response["source_documents"]]
 
         # Compute ROUGE scores
         rouge_scores = scorer.score(human_answer, response["result"])
@@ -172,14 +186,41 @@ def run_rag_pipeline(
         # Store results as a dictionary
         results.append({
             "question": question,
-            "human_answer": human_answer,
-            "response": response["result"],
+            "ground_truth": human_answer,
+            "answer": response["result"],
+            "contexts": contexts,
             "rouge1": rouge_scores["rouge1"].fmeasure,
             "rouge2": rouge_scores["rouge2"].fmeasure,
-            "rougeL": rouge_scores["rougeL"].fmeasure,
+            "rougeL": rouge_scores["rougeL"].fmeasure
         })
-    
-        df = pd.DataFrame(results)
+
+    df = pd.DataFrame(results)
+    ragas_dataset = Dataset.from_pandas(df[["question", "answer", "contexts", "ground_truth"]])
+
+    # Evaluate using RAGAS
+    ragas_result = evaluate(
+        ragas_dataset,
+        metrics=[
+            answer_relevancy,
+            context_precision,
+            context_recall,
+            faithfulness,
+            answer_similarity
+        ]
+    )
+    print(ragas_result.to_pandas())
+
+    # Extract the directory and base filename
+    directory, filename = os.path.split(results_store_name)
+    name, ext = os.path.splitext(filename)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+
+    # Create the new path with timestamp
+    output_filename = os.path.join(directory, f"{name}_{timestamp}{ext}")
+
+    df = pd.DataFrame(results)
+    df.to_csv(output_filename, index=False)
 
     overall_rouge = {
         "ROUGE-1": df["rouge1"].mean(),
@@ -254,7 +295,8 @@ def main() -> None:
         results = run_rag_pipeline(absolute_path=env_vars["question_store_name"], 
                                    retriever=retriever,
                                    model_name=env_vars["model_name"],
-                                   temperature=float(env_vars["temperature"]))
+                                   temperature=float(env_vars["temperature"]),
+                                   results_store_name=env_vars["results_store_name"])
     elif mode == "interactive":
         run_interactive_mode(retriever=retriever,
                              model_name=env_vars["model_name"],

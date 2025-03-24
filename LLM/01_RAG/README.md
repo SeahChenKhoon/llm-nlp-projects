@@ -60,7 +60,7 @@ process_documents()	| Splits documents, embeds them, builds FAISS index. |
 | evaluate_ragas_scores() | Applies RAGAS metrics for deep evaluation. |
 | merge_and_store_results() | 	Combines all scores and exports CSV. |
 | run_interactive_mode() | 	CLI interface for exploratory QA.
-main()	Orchestrates the app based on user mode selection. |
+main()	| Orchestrates the app based on user mode selection. |
 
 
 # 🧱 Dependencies

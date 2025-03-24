@@ -1,10 +1,3 @@
-pip install uv
-C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python311\\python.exe -m venv .venv
-.\\.venv\\Scripts\\activate
-pip install uv
-uv pip install -r requirements.txt
-uv run rag_document_retrieval.py 
-
 # 🔍 Project Overview: Retrieval-Augmented Generation Evaluation Pipeline
 This project implements a Retrieval-Augmented Generation (RAG) evaluation framework that leverages large language models (LLMs), document embeddings, and robust evaluation metrics to assess the performance of generated responses against human-annotated answers.
 

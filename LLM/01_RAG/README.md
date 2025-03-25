@@ -76,17 +76,16 @@ A user working with a collection of internal PDFs can:
 
 ## 🔧 1. Install Python 3.11
 
-<li> Download and install Python 3.11.0 from [python.org](python.org). </li>
+<li> Download and install Python 3.11.0 from [python.org](python.org). Note the installed folder path</li>
 
 ## 🔧 2. Setup Virtual Environment & Install Dependencies
 
 ```
 pip install uv
-{folder}\Python311\python.exe -m venv .venv
-.\.venv\Scripts\activate
-pip install uv
+{python 311 folder}/Python311/python.exe -m venv .venv
+.\\.venv\\Scripts\\activate
 uv pip install -r requirements.txt
-uv run rag_document_retrieval.py
+uv run ./src/rag_document_retrieval.py
 ```
 
 ### 📄 requirements.txt

@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: generate-tests
+        name: Generate Unit Tests
+        entry: LLM/02_Generate_unit_test/python generate_tests.py
+        language: system
+        types: [python]
+        pass_filenames: false

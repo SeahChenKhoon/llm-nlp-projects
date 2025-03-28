@@ -14,6 +14,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "faiss-cpu" },
     { name = "langchain-community" },
+    { name = "langchain-experimental" },
     { name = "langchain-openai" },
     { name = "pandas" },
     { name = "pypdf" },
@@ -25,6 +26,7 @@ dependencies = [
 requires-dist = [
     { name = "faiss-cpu", specifier = ">=1.10.0" },
     { name = "langchain-community", specifier = ">=0.3.20" },
+    { name = "langchain-experimental", specifier = ">=0.3.4" },
     { name = "langchain-openai", specifier = ">=0.3.9" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pypdf", specifier = ">=5.4.0" },
@@ -709,6 +711,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/24/ae/f7764ad1c36aeba561a9cf9eb6774613fdff611f9c91967bb447092baf64/langchain_core-0.3.47.tar.gz", hash = "sha256:975a3daabf8e8d583749b3c553cc412d0527d935dfe820317431b475fa0c585a", size = 531793 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/57/1e/a65339d128f2e957440db21746f66aaf103d34042fcd130c1801da00492d/langchain_core-0.3.47-py3-none-any.whl", hash = "sha256:ef7c78202e6fd9df79fe8128c828d08a95d3878cf4aec282580baf358a3f2ec5", size = 417108 },
+]
+
+[[package]]
+name = "langchain-experimental"
+version = "0.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-community" },
+    { name = "langchain-core" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/27/56/a8acbb08a03383c28875b3b151e4cefea5612266917fbd6fc3c14c21e172/langchain_experimental-0.3.4.tar.gz", hash = "sha256:937c4259ee4a639c618d19acf0e2c5c2898ef127050346edc5655259aa281a21", size = 140532 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/27/fe8caa4884611286b1f7d6c5cfd76e1fef188faaa946db4fde6daa1cd2cd/langchain_experimental-0.3.4-py3-none-any.whl", hash = "sha256:2e587306aea36b60fa5e5fc05dc7281bee9f60a806f0bf9d30916e0ee096af80", size = 209154 },
 ]
 
 [[package]]

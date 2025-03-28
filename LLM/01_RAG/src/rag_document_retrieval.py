@@ -23,13 +23,13 @@ from ragas.metrics import (
 # LangChain core
 from langchain.chains import RetrievalQA
 from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores.base import VectorStoreRetriever
 
 # LangChain integrations
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 from langchain_community.vectorstores import FAISS
+from langchain_experimental.text_splitter import SemanticChunker
 
 # Configure logging
 logging.basicConfig(
@@ -44,19 +44,21 @@ logging.getLogger("langchain").setLevel(logging.INFO)
 
 def _load_env_variables() -> Dict[str, Any]:
     """
-    Load environment variables from a `.env` file and return them as a dictionary.
+    Loads environment variables from a `.env` file and returns them as a dictionary.
+
+    This function uses `python-dotenv` to load variables from a local `.env` file and
+    retrieves key configuration settings used throughout the RAG pipeline.
 
     Returns:
-        Dict[str, Any]: A dictionary containing configuration values including:
-            - openai_api_key (str | None): API key for OpenAI.
-            - faiss_index_name (str | None): Name of the FAISS index.
-            - document_store_name (str | None): Name of the document store.
-            - file_type (str): File type to load, default is "pdf".
-            - chunk_size (int): Number of characters in each document chunk.
-            - chunk_overlap (int): Number of overlapping characters between chunks.
-            - model_name (str | None): Name of the OpenAI model to use.
-            - temperature (str | None): Temperature setting for model response variability.
-            - question_store_name (str | None): Name of the question store.
+        Dict[str, Any]: A dictionary containing the following keys:
+            - 'openai_api_key' (str): OpenAI API key for authentication (e.g., "sk-proj-...").
+            - 'faiss_index_name' (str): Directory name for storing the FAISS index (e.g., "faiss_index").
+            - 'document_store_name' (str): Path to the folder containing input documents (e.g., "./documents").
+            - 'file_type' (str): Glob pattern for document file types (e.g., "*.pdf").
+            - 'model_name' (str): OpenAI model to use (e.g., "gpt-4").
+            - 'temperature' (float): Sampling temperature for LLM response variability (e.g., 0.0).
+            - 'question_store_name' (str): Path to the CSV file with questions and answers (e.g., "./questions/Questions.csv").
+            - 'results_store_name' (str): Path to the output results CSV (e.g., "./results/result.csv").
     """
     load_dotenv()  # Load environment variables from .env file
 
@@ -65,10 +67,8 @@ def _load_env_variables() -> Dict[str, Any]:
         "faiss_index_name": os.getenv("faiss_index_name"),
         "document_store_name": os.getenv("document_store_name"),
         "file_type": os.getenv("file_type", "pdf"),
-        "chunk_size": int(os.getenv("chunk_size", 500)), 
-        "chunk_overlap": int(os.getenv("chunk_overlap", 100)),
         "model_name": os.getenv("model_name"),
-        "temperature": os.getenv("temperature"),
+        "temperature": float(os.getenv("temperature")),
         "question_store_name": os.getenv("question_store_name"),
         "results_store_name": os.getenv("results_store_name")
     }
@@ -101,19 +101,39 @@ def load_pdfs(folder_path: str) -> List[Document]:
 def process_documents(    
     openai_api_key: str,
     document_store_name: str,
-    chunk_size: int,
-    chunk_overlap: int,
     faiss_index_name: str
 ) -> VectorStoreRetriever:
+    """
+    Processes PDF documents using semantic chunking, generates embeddings, and stores them in a FAISS index.
+
+    This function:
+      - Loads PDF documents from the given directory.
+      - Splits them into semantically meaningful chunks using `SemanticChunker`.
+      - Converts the chunks into OpenAI embeddings.
+      - Stores the embeddings in a local FAISS index for retrieval.
+
+    Args:
+        openai_api_key (str): OpenAI API key used to initialize the embedding model.
+        document_store_name (str): Path to the folder containing input PDF documents.
+        faiss_index_name (str): Name for the FAISS index directory to save locally.
+
+    Returns:
+        VectorStoreRetriever: A retriever instance built from the FAISS vector store.
+    """
     documents = load_pdfs(document_store_name)
 
-    # Split documents into smaller chunks
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, 
-                                                   chunk_overlap=chunk_overlap)
-    docs = text_splitter.split_documents(documents)
     
     # Convert text chunks into embeddings and store them in FAISS
     embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+
+    # Use SemanticChunker with percentile-based control
+    text_splitter = SemanticChunker(
+        embeddings=embeddings,
+        breakpoint_threshold_type="percentile",
+        breakpoint_threshold_amount=95  # You can tune this
+    )
+    docs = text_splitter.split_documents(documents)
+
     vectorstore = FAISS.from_documents(docs, embeddings)
     vectorstore.save_local(faiss_index_name)
 
@@ -436,8 +456,6 @@ def main() -> None:
     env_vars = _load_env_variables()
     retriever = process_documents(openai_api_key=env_vars["openai_api_key"],
                                   document_store_name=env_vars["document_store_name"], 
-                                  chunk_size=env_vars["chunk_size"], 
-                                  chunk_overlap=env_vars["chunk_overlap"], 
                                   faiss_index_name=env_vars["faiss_index_name"])
     mode = input("Enter 'batch' to run from CSV or 'interactive' to type questions: ").strip().lower()
     

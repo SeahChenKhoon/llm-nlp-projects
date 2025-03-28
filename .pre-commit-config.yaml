@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: generate-tests
         name: Generate Unit Tests
-        entry: python ./LLM/02_Generate_unit_test/python generate_tests.py
+        entry: python ./LLM/02_Generate_unit_test/generate_tests.py
         language: system
         types: [python]
         pass_filenames: false

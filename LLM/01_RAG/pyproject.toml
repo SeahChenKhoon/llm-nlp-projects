@@ -1,12 +1,17 @@
 [project]
 name = "01-rag"
 version = "0.1.0"
-description = "Add your description here"
+description = "This project implements a robust Retrieval-Augmented Generation (RAG) pipeline using OpenAI models and LangChain to enable document-based question answering and evaluation. It loads PDF documents, semantically chunks them using SemanticChunker, and embeds the content into a FAISS vector store for fast retrieval. Questions are sourced from a CSV file and answered using a LangChain RetrievalQA chain built on OpenAI’s Chat API (e.g., GPT-4). The answers are evaluated against reference responses using ROUGE scores (for lexical similarity) and RAGAS metrics (for semantic relevance, precision, recall, and factual alignment).
+
+Environment variables are managed via .env, providing flexibility for model selection, temperature control, file paths, and API credentials. The application supports both batch mode (for automated evaluation over multiple questions) and interactive mode (for live querying). Processed results are stored in a timestamped CSV and include detailed evaluation metrics.
+
+The code integrates key libraries like pandas, ragas, and datasets, and emphasizes modularity, logging, and reproducibility. By combining traditional evaluation (ROUGE) with modern semantic metrics (RAGAS), this pipeline offers a comprehensive framework for assessing the quality and reliability of LLM-generated answers grounded in retrieved document contexts."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "==3.11"
 dependencies = [
     "faiss-cpu>=1.10.0",
     "langchain-community>=0.3.20",
+    "langchain-experimental>=0.3.4",
     "langchain-openai>=0.3.9",
     "pandas>=2.2.3",
     "pypdf>=5.4.0",

@@ -1,6 +1,0 @@
-faiss_index/*
-results/*
-.venv/
-.env
-.python-version
-*.pyc
